@@ -11,7 +11,7 @@ UPDATE_OPS_COLLECTION = '_update_ops_'
 def _variable_with_weight_decay(name, shape, stddev, wd, trainable=True):
     var = _variable_on_gpu(name, shape, tf.truncated_normal_initializer(stddev=stddev))
     if wd:
-        weight_decay = tf.mul(tf.nn.l2_loss(var), wd, name='weight_loss')
+        weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
         tf.add_to_collection('losses', weight_decay)
     return var
 
@@ -74,6 +74,12 @@ def inference_refine(images, coarse7_output, keep_conv, reuse=False, trainable=T
     fine1_conv = conv2d('fine1', images, [9, 9, 3, 63], [63], [1, 2, 2, 1], padding='VALID', reuse=reuse, trainable=trainable)
     fine1 = tf.nn.max_pool(fine1_conv, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME', name='fine_pool1')
     fine1_dropout = tf.nn.dropout(fine1, keep_conv)
+
+    print "fine1"
+    print fine1
+    print "keep_conv"
+    print keep_conv
+
     fine2 = tf.concat(3, [fine1_dropout, coarse7_output])
     fine3 = conv2d('fine3', fine2, [5, 5, 64, 64], [64], [1, 1, 1, 1], padding='SAME', reuse=reuse, trainable=trainable)
     fine3_dropout = tf.nn.dropout(fine3, keep_conv)
