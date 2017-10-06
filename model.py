@@ -67,6 +67,9 @@ def inference(images, reuse=False, trainable=True):
     coarse6 = fc('coarse6', coarse5, [6*10*256, 4096], [4096], reuse=reuse, trainable=trainable)
     coarse7 = fc('coarse7', coarse6, [4096, 4070], [4070], reuse=reuse, trainable=trainable)
     coarse7_output = tf.reshape(coarse7, [-1, 55, 74, 1])
+
+    print "The coarse output:"
+    print coarse7_output
     return coarse7_output
 
 
@@ -78,9 +81,9 @@ def inference_refine(images, coarse7_output, keep_conv, reuse=False, trainable=T
     print "fine1"
     print fine1
     print "keep_conv"
-    print keep_conv
+    print coarse7_output
 
-    fine2 = tf.concat(3, [fine1_dropout, coarse7_output])
+    fine2 = tf.concat([fine1_dropout, coarse7_output], 3)
     fine3 = conv2d('fine3', fine2, [5, 5, 64, 64], [64], [1, 1, 1, 1], padding='SAME', reuse=reuse, trainable=trainable)
     fine3_dropout = tf.nn.dropout(fine3, keep_conv)
     fine4 = conv2d('fine4', fine3_dropout, [5, 5, 64, 1], [1], [1, 1, 1, 1], padding='SAME', reuse=reuse, trainable=trainable)

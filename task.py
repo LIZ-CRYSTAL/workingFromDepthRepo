@@ -27,8 +27,10 @@ def train():
         keep_conv = tf.placeholder(tf.float32)
         keep_hidden = tf.placeholder(tf.float32)
         if REFINE_TRAIN:
-            print("refine train.")
+            print("into refine train.")
             coarse = model.inference(images, keep_conv, trainable=False)
+            print "coarse output"
+            print coarse
             logits = model.inference_refine(images, coarse, keep_conv, keep_hidden)
         else:
             print("coarse train.")
