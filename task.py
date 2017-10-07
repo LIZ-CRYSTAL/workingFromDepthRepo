@@ -27,17 +27,13 @@ def train():
         keep_conv = tf.placeholder(tf.float32)
         keep_hidden = tf.placeholder(tf.float32)
         if REFINE_TRAIN:
-            print("into refine train.")
             coarse = model.inference(images, keep_conv, trainable=False)
-            print "coarse output"
-            print coarse
             logits = model.inference_refine(images, coarse, keep_conv, keep_hidden)
         else:
-            print("coarse train.")
             logits = model.inference(images, keep_conv, keep_hidden)
         loss = model.loss(logits, depths, invalid_depths)
         train_op = op.train(loss, global_step, BATCH_SIZE)
-        init_op = tf.initialize_all_variables()
+        init_op = tf.global_variables_initializer()
 
         # Session
         sess = tf.Session(config=tf.ConfigProto(log_device_placement=LOG_DEVICE_PLACEMENT))
@@ -47,7 +43,7 @@ def train():
         coarse_params = {}
         refine_params = {}
         if REFINE_TRAIN:
-            for variable in tf.all_variables():
+            for variable in tf.global_variables():
                 variable_name = variable.name
                 print("parameter: %s" % (variable_name))
                 if variable_name.find("/") < 0 or variable_name.count("/") != 1:
