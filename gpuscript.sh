@@ -20,3 +20,5 @@ sudo apt install nvidia-cuda-dev
 sudo ldconfig /usr/local/cuda/lib64
 
 pip install --user --upgrade https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0.10.0-cp27-none-linux_x86_64.whl
+
+pip install --user pillow
