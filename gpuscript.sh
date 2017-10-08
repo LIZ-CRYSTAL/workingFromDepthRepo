@@ -11,5 +11,7 @@ sudo apt-get install cuda -y
 
 sudo apt-get install python-pip -y
 
+pip install --upgrade pip
+
 pip install --upgrade tensorflow-gpu
 
