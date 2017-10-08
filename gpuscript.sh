@@ -15,3 +15,4 @@ pip install --upgrade pip
 
 pip install --upgrade tensorflow-gpu
 
+sudo apt install nvidia-cuda-dev
