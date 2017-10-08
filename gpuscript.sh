@@ -7,5 +7,9 @@ sudo apt-key add /var/cuda-repo-9-0-local/7fa2af80.pub
 
 sudo apt-get update 
 
-sudo apt-get install cuda
+sudo apt-get install cuda -y
+
+sudo apt-get install python-pip -y
+
+pip install --upgrade tensorflow-gpu
 
