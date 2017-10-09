@@ -21,7 +21,7 @@ FINE_TUNE = True
 
 def train():
     with tf.Graph().as_default():
-        with tf.device('/gpu:0'):
+        if True:
             global_step = tf.Variable(0, trainable=False)
             dataset = DataSet(BATCH_SIZE)
             images, depths, invalid_depths = dataset.csv_inputs(TRAIN_FILE)
@@ -37,7 +37,7 @@ def train():
             init_op = tf.global_variables_initializer()
 
         # Session
-        with tf.Session(config=tf.ConfigProto(log_device_placement=LOG_DEVICE_PLACEMENT)) as sess:
+        with tf.Session(config=tf.ConfigProto(log_device_placement=LOG_DEVICE_PLACEMENT,allow_soft_placement = True)) as sess:
             sess.run(init_op)
             # parameters
             coarse_params = {}
