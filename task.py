@@ -39,6 +39,9 @@ def train():
         # Session
         with tf.Session(config=tf.ConfigProto(log_device_placement=LOG_DEVICE_PLACEMENT,allow_soft_placement = True)) as sess:
             sess.run(init_op)
+            
+            writer = tf.summary.FileWriter("/tmp/tensorflow/depth1", sess.graph)
+            merged = tf.summary.merge_all()
             # parameters
             coarse_params = {}
             refine_params = {}
@@ -92,8 +95,9 @@ def train():
             for step in xrange(MAX_STEPS):
                 index = 0
                 for i in xrange(1000):
-                    _, loss_value, logits_val, images_val = sess.run([train_op, loss, logits, images], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
+                    _, loss_value, logits_val, images_val, summ = sess.run([train_op, loss, logits, images, merged], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
                     if index % 10 == 0:
+                        writer.add_summary(summ)
                         print("%s: %d[epoch]: %d[iteration]: train loss %f" % (datetime.now(), step, index, loss_value))
                         assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
                     if index % 500 == 0:
