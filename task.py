@@ -49,12 +49,10 @@ def train():
             #clean this up
             for variable in tf.global_variables():
                 variable_name = variable.name
-                print("parameter: %s" % (variable_name))
                 if variable_name.find("/") < 0 or variable_name.count("/") != 1:
                     continue
                 if variable_name.find('coarse') >= 0:
                     coarse_params[variable_name] = variable
-                print("parameter: %s" %(variable_name))
                 if variable_name.find('fine') >= 0:
                     refine_params[variable_name] = variable
             
