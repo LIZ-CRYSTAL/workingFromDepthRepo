@@ -99,6 +99,7 @@ def train():
                     index += 1
 
                 if step % 5 == 0 or (step * 1) == MAX_STEPS:
+                    print 'checkpoint saved'
                     #FIXME: This used to only save one (in our case the 
                     refine_checkpoint_path = REFINE_DIR + '/model.ckpt'
                     saver_refine.save(sess, refine_checkpoint_path, global_step=step)
