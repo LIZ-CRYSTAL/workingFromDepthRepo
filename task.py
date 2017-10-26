@@ -15,6 +15,7 @@ BATCH_SIZE = 8
 TRAIN_FILE = "train.csv"
 COARSE_DIR = "coarse"
 REFINE_DIR = "refine"
+checkpoint_dir = './here'
 
 REFINE_TRAIN = True
 FINE_TUNE = True
