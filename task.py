@@ -28,11 +28,10 @@ def train():
             images, depths, invalid_depths = dataset.csv_inputs(TRAIN_FILE)
             keep_conv = tf.placeholder(tf.float32)
             keep_hidden = tf.placeholder(tf.float32)
-            if REFINE_TRAIN:
-                coarse = model.inference(images, keep_conv, trainable=False)
-                logits = model.inference_refine(images, coarse, keep_conv, keep_hidden)
-            else:
-                logits = model.inference(images, keep_conv, keep_hidden)
+
+            coarse = model.inference(images, keep_conv, trainable=False)
+            logits = model.inference_refine(images, coarse, keep_conv, keep_hidden)
+
             loss = model.loss(logits, depths, invalid_depths)
             train_op = op.train(loss, global_step, BATCH_SIZE)
             init_op = tf.global_variables_initializer()
@@ -46,49 +45,40 @@ def train():
             # parameters
             coarse_params = {}
             refine_params = {}
-            if REFINE_TRAIN:
-                for variable in tf.global_variables():
-                    variable_name = variable.name
-                    print("parameter: %s" % (variable_name))
-                    if variable_name.find("/") < 0 or variable_name.count("/") != 1:
-                        continue
-                    if variable_name.find('coarse') >= 0:
-                        coarse_params[variable_name] = variable
-                    print("parameter: %s" %(variable_name))
-                    if variable_name.find('fine') >= 0:
-                        refine_params[variable_name] = variable
-            else:
-                for variable in tf.trainable_variables():
-                    variable_name = variable.name
-                    print("parameter: %s" %(variable_name))
-                    if variable_name.find("/") < 0 or variable_name.count("/") != 1:
-                        continue
-                    if variable_name.find('coarse') >= 0:
-                        coarse_params[variable_name] = variable
-                    if variable_name.find('fine') >= 0:
-                        refine_params[variable_name] = variable
+            
+            #clean this up
+            for variable in tf.global_variables():
+                variable_name = variable.name
+                print("parameter: %s" % (variable_name))
+                if variable_name.find("/") < 0 or variable_name.count("/") != 1:
+                    continue
+                if variable_name.find('coarse') >= 0:
+                    coarse_params[variable_name] = variable
+                print("parameter: %s" %(variable_name))
+                if variable_name.find('fine') >= 0:
+                    refine_params[variable_name] = variable
+            
             # define saver
-            print coarse_params
+            print "Saving coarse_params and refine_params"
             saver_coarse = tf.train.Saver(coarse_params)
-            if REFINE_TRAIN:
-                saver_refine = tf.train.Saver(refine_params)
-            # fine tune
-            if FINE_TUNE:
-                coarse_ckpt = tf.train.get_checkpoint_state(COARSE_DIR)
-                if coarse_ckpt and coarse_ckpt.model_checkpoint_path:
-                    print("Pretrained coarse Model Loading.")
-                    saver_coarse.restore(sess, coarse_ckpt.model_checkpoint_path)
-                    print("Pretrained coarse Model Restored.")
-                else:
-                    print("No Pretrained coarse Model.")
-                if REFINE_TRAIN:
-                    refine_ckpt = tf.train.get_checkpoint_state(REFINE_DIR)
-                    if refine_ckpt and refine_ckpt.model_checkpoint_path:
-                        print("Pretrained refine Model Loading.")
-                        saver_refine.restore(sess, refine_ckpt.model_checkpoint_path)
-                        print("Pretrained refine Model Restored.")
-                    else:
-                        print("No Pretrained refine Model.")
+            saver_refine = tf.train.Saver(refine_params)
+
+            #restore the models
+            coarse_ckpt = tf.train.get_checkpoint_state(COARSE_DIR)
+            if coarse_ckpt and coarse_ckpt.model_checkpoint_path:
+                print("Pretrained coarse Model Loading.")
+                saver_coarse.restore(sess, coarse_ckpt.model_checkpoint_path)
+                print("Pretrained coarse Model Restored.")
+            else:
+                print("No Pretrained coarse Model.")
+
+            refine_ckpt = tf.train.get_checkpoint_state(REFINE_DIR)
+            if refine_ckpt and refine_ckpt.model_checkpoint_path:
+                print("Pretrained refine Model Loading.")
+                saver_refine.restore(sess, refine_ckpt.model_checkpoint_path)
+                print("Pretrained refine Model Restored.")
+            else:
+                print("No Pretrained refine Model.")
 
             # train
             coord = tf.train.Coordinator()
@@ -109,12 +99,12 @@ def train():
                     index += 1
 
                 if step % 5 == 0 or (step * 1) == MAX_STEPS:
-                    if REFINE_TRAIN:
-                        refine_checkpoint_path = REFINE_DIR + '/model.ckpt'
-                        saver_refine.save(sess, refine_checkpoint_path, global_step=step)
-                    else:
-                        coarse_checkpoint_path = COARSE_DIR + '/model.ckpt'
-                        saver_coarse.save(sess, coarse_checkpoint_path, global_step=step)
+                    #FIXME: This used to only save one (in our case the 
+                    refine_checkpoint_path = REFINE_DIR + '/model.ckpt'
+                    saver_refine.save(sess, refine_checkpoint_path, global_step=step)
+                    coarse_checkpoint_path = COARSE_DIR + '/model.ckpt'
+                    saver_coarse.save(sess, coarse_checkpoint_path, global_step=step)
+
             coord.request_stop()
             coord.join(threads)
 
