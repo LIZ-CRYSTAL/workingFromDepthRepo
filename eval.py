@@ -1,5 +1,5 @@
 eval_dir = './here'
-eval_interval_secs = 1
+eval_interval_secs = 600
 import math
 import model
 import task
@@ -23,7 +23,8 @@ def eval_once(saverCoarse, saverRefine, summary_writer, top_k_op, summary_op):
     top_k_op: Top K op.
     summary_op: Summary op.
   """
-  with tf.Session() as sess:
+  config = tf.ConfigProto(device_count = {'GPU': 0})
+  with tf.Session(config=config) as sess:
     ckptCoarse = tf.train.get_checkpoint_state('./coarse')
     ckptRefine = tf.train.get_checkpoint_state('./refine')
     if ckptCoarse and ckptCoarse.model_checkpoint_path and ckptRefine and ckptRefine.model_checkpoint_path :
@@ -92,7 +93,7 @@ def evaluate():
     init_op = tf.global_variables_initializer()
     
     # Session
-    with tf.Session(config=tf.ConfigProto(allow_soft_placement = True)) as sess:
+    with tf.Session(config=tf.ConfigProto()) as sess:
         sess.run(init_op)
     
         coarse_params = {}
@@ -106,10 +107,6 @@ def evaluate():
                 coarse_params[variable_name] = variable
             if variable_name.find('fine') >= 0:
                 refine_params[variable_name] = variable
-        print "coarse_params"
-        print coarse_params
-        print "refine_params"
-        print refine_params
         # Restore the moving average version of the learned variables for eval.
         #variable_averages = tf.train.ExponentialMovingAverage(
         #    MOVING_AVERAGE_DECAY)
@@ -131,7 +128,8 @@ def main(argv=None):  # pylint: disable=unused-argument
   if tf.gfile.Exists(eval_dir):
     tf.gfile.DeleteRecursively(eval_dir)
   tf.gfile.MakeDirs(eval_dir)
-  evaluate()
+  with tf.device('/cpu:0'):
+    evaluate()
 
 
 if __name__ == '__main__':

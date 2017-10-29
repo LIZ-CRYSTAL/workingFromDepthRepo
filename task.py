@@ -9,6 +9,9 @@ from dataset import output_predict
 import model
 import train_operation as op
 
+from tensorflow.python.client import timeline
+
+
 MAX_STEPS = 10000000
 LOG_DEVICE_PLACEMENT = False
 BATCH_SIZE = 8
@@ -22,7 +25,8 @@ FINE_TUNE = True
 
 def train():
     with tf.Graph().as_default():
-        if True:
+        # Session
+        with tf.Session(config=tf.ConfigProto(log_device_placement=LOG_DEVICE_PLACEMENT,allow_soft_placement = True)) as sess:
             global_step = tf.Variable(0, trainable=False)
             dataset = DataSet(BATCH_SIZE)
             images, depths, invalid_depths = dataset.csv_inputs(TRAIN_FILE)
@@ -36,9 +40,12 @@ def train():
             train_op = op.train(loss, global_step, BATCH_SIZE)
             init_op = tf.global_variables_initializer()
 
-        # Session
-        with tf.Session(config=tf.ConfigProto(log_device_placement=LOG_DEVICE_PLACEMENT,allow_soft_placement = True)) as sess:
+            options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+            run_metadata = tf.RunMetadata()
+            print 'starting init op'
             sess.run(init_op)
+            print '/starting init op'
+
             
             writer = tf.summary.FileWriter("/tmp/tensorflow/depth1", sess.graph)
             merged = tf.summary.merge_all()
@@ -84,7 +91,18 @@ def train():
             for step in xrange(MAX_STEPS):
                 index = 0
                 for i in xrange(1000):
-                    _, loss_value, logits_val, images_val, summ = sess.run([train_op, loss, logits, images, merged], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
+                    print 'starting run'
+                    if index % 10 == 0:
+                    	_, loss_value, logits_val, images_val, summ  = sess.run([train_op, loss, logits, images, merged], feed_dict={keep_conv: 0.8, keep_hidden: 0.5}, options=options, run_metadata=run_metadata)
+                    else:
+                    	_, loss_value, logits_val, images_val  = sess.run([train_op, loss, logits, images], feed_dict={keep_conv: 0.8, keep_hidden: 0.5}, options=options, run_metadata=run_metadata)
+                    print '/starting run'
+
+                    fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+                    chrome_trace = fetched_timeline.generate_chrome_trace_format()
+                    with open('timeline_01.json', 'w') as f:
+                        f.write(chrome_trace)
+
                     if index % 10 == 0:
                         writer.add_summary(summ)
                         print("%s: %d[epoch]: %d[iteration]: train loss %f" % (datetime.now(), step, index, loss_value))
