@@ -1,4 +1,5 @@
 sudo apt-get install openjdk-8-jdk git python-dev python3-dev python-numpy python3-numpy python-six python3-six build-essential python-pip python3-pip python-virtualenv swig python-wheel python3-wheel libcurl3-dev libcupti-dev -y
+sudo apt-get install nvidia-cuda-dev -y
 sudo add-apt-repository ppa:graphics-drivers/ppa
 sudo apt update
 
