@@ -9,7 +9,7 @@ TARGET_HEIGHT = 55
 TARGET_WIDTH = 74
 
 
-def csv_inputs(self, csv_file_path, batch_size):
+def csv_inputs(csv_file_path, batch_size):
     filename_queue = tf.train.string_input_producer([csv_file_path], shuffle=True)
     reader = tf.TextLineReader()
     _, serialized_example = reader.read(filename_queue)
