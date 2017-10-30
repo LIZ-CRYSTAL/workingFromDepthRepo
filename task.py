@@ -9,7 +9,7 @@ import model
 import train_operation as op
 
 from tensorflow.python.client import timeline
-
+import time
 
 MAX_STEPS = 10000000
 LOG_DEVICE_PLACEMENT = False #Whether to log device placement.
