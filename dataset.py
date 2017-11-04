@@ -35,6 +35,7 @@ def csv_inputs(csv_file_path, batch_size):
         num_threads=4,
         capacity= 50 + 3 * batch_size,
     )
+    tf.summary.image('images', images, max_outputs=3)
     return images, depths, invalid_depths
 
 
