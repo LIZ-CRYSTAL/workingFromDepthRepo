@@ -1,5 +1,5 @@
 eval_dir = 'here'
-eval_interval_secs = 600
+eval_interval_secs = 30
 import math
 import model
 import task
