@@ -4,9 +4,10 @@ from datetime import datetime
 from tensorflow.python.platform import gfile
 import numpy as np
 import tensorflow as tf
-from dataset import output_predict, csv_inputs
 import model
 import train_operation as op
+from PIL import Image
+
 
 from tensorflow.python.client import timeline
 import time
@@ -19,6 +20,11 @@ TRAIN_FILE = "train.csv"
 COARSE_DIR = "coarse"
 REFINE_DIR = "refine"
 checkpoint_dir = './here'
+
+IMAGE_HEIGHT = 228
+IMAGE_WIDTH = 304
+TARGET_HEIGHT = 55
+TARGET_WIDTH = 74
 
 REFINE_TRAIN = True
 FINE_TUNE = True
@@ -38,6 +44,7 @@ def train():
         # Build graph
         coarse = model.inference(images, keep_conv, trainable=False)
         logits = model.inference_refine(images, coarse, keep_conv, keep_hidden)
+        tf.summary.image('images2', logits, max_outputs=3)
         loss = model.loss(logits, depths, invalid_depths)
         train_op = op.train(loss, global_step, BATCH_SIZE)
         
@@ -53,7 +60,7 @@ def train():
 
           def before_run(self, run_context):
             self._step += 1
-            return tf.train.SessionRunArgs(loss)  # Asks for loss value.
+            return tf.train.SessionRunArgs([loss, logits])  # Asks for loss value.
 
           def after_run(self, run_context, run_values):
             if self._step % LOG_FREQUENCY == 0:
@@ -61,7 +68,9 @@ def train():
               duration = current_time - self._start_time
               self._start_time = current_time
 
-              loss_value = run_values.results
+              loss_value = run_values.results[0]
+              depths = run_values.results[1]
+              logOutputDepth(depths)
               examples_per_sec = LOG_FREQUENCY * BATCH_SIZE / duration
               sec_per_batch = float(duration / LOG_FREQUENCY)
 
@@ -83,6 +92,64 @@ def train():
             while not mon_sess.should_stop():
                 mon_sess.run(train_op, feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
 
+def csv_inputs(csv_file_path, batch_size):
+    filename_queue = tf.train.string_input_producer([csv_file_path], shuffle=True)
+    reader = tf.TextLineReader()
+    _, serialized_example = reader.read(filename_queue)
+    filename, depth_filename = tf.decode_csv(serialized_example, [["path"], ["annotation"]])
+    # input
+    jpg = tf.read_file(filename)
+    image = tf.image.decode_jpeg(jpg, channels=3)
+    image = tf.cast(image, tf.float32)
+    # target
+    depth_png = tf.read_file(depth_filename)
+    depth = tf.image.decode_png(depth_png, channels=1)
+    depth = tf.cast(depth, tf.float32)
+    depth = tf.div(depth, [255.0])
+    #depth = tf.cast(depth, tf.int64)
+    # resize
+    image = tf.image.resize_images(image, (IMAGE_HEIGHT, IMAGE_WIDTH))
+    depth = tf.image.resize_images(depth, (TARGET_HEIGHT, TARGET_WIDTH))
+    invalid_depth = tf.sign(depth)
+    # generate batch
+    images, depths, invalid_depths = tf.train.batch(
+        [image, depth, invalid_depth],
+        batch_size=batch_size,
+        num_threads=4,
+        capacity= 50 + 3 * batch_size,
+    )
+    tf.summary.image('images', images, max_outputs=3)
+    return images, depths, invalid_depths
+
+def logOutputDepth(depths):
+    for i, depth in enumerate(depths):
+        print 'before:::::'
+        print depth
+        depth = depth.transpose(2, 0, 1)
+        print 'after:::::'
+        print depth
+        if np.max(depth) != 0:
+            ra_depth = (depth/np.max(depth))*255.0
+        else:
+            ra_depth = depth*255.0
+
+
+def output_predict(depths, images, output_dir):
+    print("output predict into %s" % output_dir)
+    if not gfile.Exists(output_dir):
+        gfile.MakeDirs(output_dir)
+    for i, (image, depth) in enumerate(zip(images, depths)):
+        pilimg = Image.fromarray(np.uint8(image))
+        image_name = "%s/%05d_org.png" % (output_dir, i)
+        pilimg.save(image_name)
+        depth = depth.transpose(2, 0, 1)
+        if np.max(depth) != 0:
+            ra_depth = (depth/np.max(depth))*255.0
+        else:
+            ra_depth = depth*255.0
+        depth_pil = Image.fromarray(np.uint8(ra_depth[0]), mode="L")
+        depth_name = "%s/%05d.png" % (output_dir, i)
+        depth_pil.save(depth_name)
 
 
 def main(argv=None):
