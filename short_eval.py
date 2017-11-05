@@ -76,6 +76,7 @@ def evaluate():
     keep_hidden = tf.placeholder(tf.float32)
     coarse = model.inference(images, trainable=False)
     logits = model.inference_refine(images, coarse, .5, keep_hidden)
+    tf.summary.image('images2', logits*255.0, max_outputs=3)
     # Calculate predictions.
     top_k_op = model.loss(logits, depths, invalid_depths)
     
@@ -88,7 +89,6 @@ def evaluate():
         summary_op = tf.summary.merge_all()
 
         summary_writer = tf.summary.FileWriter(eval_dir, g)
-        tf.summary.image('images2', logits*255.0, max_outputs=3)
         while True:
           eval_once(saver, summary_writer, top_k_op, summary_op)
           time.sleep(eval_interval_secs)
