@@ -44,7 +44,9 @@ def train():
         # Build graph
         coarse = model.inference(images, keep_conv, trainable=False)
         logits = model.inference_refine(images, coarse, keep_conv, keep_hidden)
-        tf.summary.image('images2', logits, max_outputs=3)
+        
+        tf.summary.image('images2', logits*255.0, max_outputs=3)
+        
         loss = model.loss(logits, depths, invalid_depths)
         train_op = op.train(loss, global_step, BATCH_SIZE)
         
