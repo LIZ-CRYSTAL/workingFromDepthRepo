@@ -60,7 +60,7 @@ def train():
 
           def before_run(self, run_context):
             self._step += 1
-            return tf.train.SessionRunArgs([loss, logits])  # Asks for loss value.
+            return tf.train.SessionRunArgs([loss, logits, images])  # Asks for loss value.
 
           def after_run(self, run_context, run_values):
             if self._step % LOG_FREQUENCY == 0:
@@ -70,7 +70,8 @@ def train():
 
               loss_value = run_values.results[0]
               depths = run_values.results[1]
-              logOutputDepth(depths)
+              images = run_values.results[2]
+              output_predict(depths, images, 'refine');
               examples_per_sec = LOG_FREQUENCY * BATCH_SIZE / duration
               sec_per_batch = float(duration / LOG_FREQUENCY)
 
@@ -120,19 +121,6 @@ def csv_inputs(csv_file_path, batch_size):
     )
     tf.summary.image('images', images, max_outputs=3)
     return images, depths, invalid_depths
-
-def logOutputDepth(depths):
-    for i, depth in enumerate(depths):
-        print 'before:::::'
-        print depth
-        depth = depth.transpose(2, 0, 1)
-        print 'after:::::'
-        print depth
-        if np.max(depth) != 0:
-            ra_depth = (depth/np.max(depth))*255.0
-        else:
-            ra_depth = depth*255.0
-
 
 def output_predict(depths, images, output_dir):
     print("output predict into %s" % output_dir)
