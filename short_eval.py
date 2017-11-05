@@ -88,7 +88,7 @@ def evaluate():
         summary_op = tf.summary.merge_all()
 
         summary_writer = tf.summary.FileWriter(eval_dir, g)
-
+        tf.summary.image('images2', logits*255.0, max_outputs=3)
         while True:
           eval_once(saver, summary_writer, top_k_op, summary_op)
           time.sleep(eval_interval_secs)
