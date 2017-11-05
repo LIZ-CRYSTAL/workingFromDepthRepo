@@ -47,17 +47,10 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
         threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
                                          start=True))
 
-      num_iter = int(math.ceil(num_examples / 8))
-      true_count = 0  # Counts the number of correct predictions.
-      total_sample_count = num_iter *8 
-      step = 0
-      while step < num_iter and not coord.should_stop():
-        predictions = sess.run([top_k_op])
-        true_count += np.sum(predictions)
-        step += 1
+      predictions = sess.run([top_k_op])
 
       # Compute precision @ 1.
-      precision = true_count / total_sample_count
+      precision = predictions[0]
       print('%s: precision @ 1 = %.3f' % (100.0, precision))
 
       summary = tf.Summary()
