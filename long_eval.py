@@ -1,5 +1,5 @@
 eval_dir = 'here'
-eval_interval_secs = 30
+eval_interval_secs = 100
 import math
 import model
 import task
@@ -53,11 +53,11 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
       step = 0
       while step < num_iter and not coord.should_stop():
         predictions = sess.run([top_k_op])
-        true_count += np.sum(predictions)
+        true_count = (predictions + true_count)/2.0
         step += 1
 
       # Compute precision @ 1.
-      precision = true_count / total_sample_count
+      precision = true_count
       print('%s: precision @ 1 = %.3f' % (100.0, precision))
 
       summary = tf.Summary()
