@@ -42,7 +42,7 @@ def train():
         keep_hidden = tf.placeholder(tf.float32)
 
         # Build graph
-        coarse = model.inference(images, keep_conv, trainable=False)
+        coarse = model.inference_coarse(images, keep_conv, trainable=False)
         logits = model.inference_refine(images, coarse, keep_conv, keep_hidden)
         
         tf.summary.image('images2', logits*255.0, max_outputs=3)
@@ -50,9 +50,14 @@ def train():
         loss = model.loss(logits, depths, invalid_depths)
         train_op = op.train(loss, global_step, BATCH_SIZE)
         
-        #load the values from the coarse network
-        #FIXME: These files will be overriden by the MonitoredTrainingSession, which will cause problems and is the wrong way of doing this!!
-        saver_coarse = tf.train.Saver(coarse.all_variables())
+        variableName = "inference_coarse"
+        varsToLoad = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, variableName)
+        print "varsToLoad"
+        print varsToLoad
+    
+
+        saver_coarse = tf.train.Saver(varsToLoad)
+
         # Logger
         class _LoggerHook(tf.train.SessionRunHook):
           """Logs loss and runtime."""
@@ -86,13 +91,16 @@ def train():
         # Train
         with tf.train.MonitoredTrainingSession(
                 save_checkpoint_secs=30,
-                checkpoint_dir=REFINE_DIR,
+                checkpoint_dir=COARSE_DIR,
                 hooks=[tf.train.StopAtStepHook(last_step=MAX_STEPS),
                     tf.train.NanTensorHook(loss),
                     _LoggerHook()],
                 config=tf.ConfigProto(
                     log_device_placement=LOG_DEVICE_PLACEMENT)) as mon_sess:
-
+            #load the values from the coarse network
+            #FIXME: These files will be overriden by the MonitoredTrainingSession, which will cause problems and is the wrong way of doing this!!
+            coarse_ckpt = tf.train.get_checkpoint_state(REFINE_DIR)
+            saver_coarse.restore(mon_sess, coarse_ckpt.model_checkpoint_path)
             while not mon_sess.should_stop():
                 mon_sess.run(train_op, feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
 
