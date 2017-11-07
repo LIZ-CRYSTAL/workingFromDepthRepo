@@ -50,9 +50,10 @@ def train():
         loss = model.loss(logits, depths, invalid_depths)
         train_op = op.train(loss, global_step, BATCH_SIZE)
         
+        #load the values from the coarse network
+        #FIXME: These files will be overriden by the MonitoredTrainingSession, which will cause problems and is the wrong way of doing this!!
+        saver_coarse = tf.train.Saver(coarse.all_variables())
         # Logger
-
-
         class _LoggerHook(tf.train.SessionRunHook):
           """Logs loss and runtime."""
 
