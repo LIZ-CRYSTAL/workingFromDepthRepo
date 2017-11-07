@@ -42,7 +42,7 @@ def train():
         keep_hidden = tf.placeholder(tf.float32)
 
         # Build graph
-        logits = model.inference(images, keep_conv, trainable=False)
+        logits = model.inference_coarse(images, keep_conv, trainable=True)
         
         tf.summary.image('images2', logits*255.0, max_outputs=3)
         
