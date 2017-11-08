@@ -29,80 +29,86 @@ TARGET_WIDTH = 74
 REFINE_TRAIN = True
 FINE_TUNE = True
 
+
 def train():
     with tf.Graph().as_default():
-        global_step = tf.contrib.framework.get_or_create_global_step()
-
-        # Force input pipeline to CPU:0 to avoid operations sometimes ending up on
-        # GPU and resulting in a slow down.
-        with tf.device('/cpu:0'):
-            images, depths, invalid_depths = csv_inputs(TRAIN_FILE, BATCH_SIZE)
-
+        global_step = tf.Variable(0, trainable=False)
+        dataset = DataSet(BATCH_SIZE)
+        images, depths, invalid_depths = dataset.csv_inputs(TRAIN_FILE)
         keep_conv = tf.placeholder(tf.float32)
         keep_hidden = tf.placeholder(tf.float32)
-
-        # Build graph
-        coarse = model.inference_coarse(images, keep_conv, trainable=False)
-        logits = model.inference_refine(images, coarse, keep_conv, keep_hidden)
-        
-        tf.summary.image('images2', logits*255.0, max_outputs=3)
-        
+        if REFINE_TRAIN:
+            print("refine train.")
+            coarse = model.inference(images, keep_conv, trainable=False)
+            logits = model.inference_refine(images, coarse, keep_conv, keep_hidden)
+        else:
+            print("coarse train.")
+            logits = model.inference(images, keep_conv, keep_hidden)
         loss = model.loss(logits, depths, invalid_depths)
         train_op = op.train(loss, global_step, BATCH_SIZE)
-        
-        variableName = "inference_coarse"
-        varsToLoad = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, variableName)
-        print "varsToLoad"
-        print varsToLoad
-    
+        init_op = tf.initialize_all_variables()
 
-        saver_coarse = tf.train.Saver(varsToLoad)
+        # Session
+        sess = tf.Session(config=tf.ConfigProto(log_device_placement=LOG_DEVICE_PLACEMENT))
+        sess.run(init_op)    
 
-        # Logger
-        class _LoggerHook(tf.train.SessionRunHook):
-          """Logs loss and runtime."""
+        # parameters
+        coarse_params = {}
+        refine_params = {}
+        if REFINE_TRAIN:
+            for variable in tf.all_variables():
+                variable_name = variable.name
+                print("parameter: %s" % (variable_name))
+                if variable_name.find("/") < 0 or variable_name.count("/") != 1:
+                    continue
+                if variable_name.find('coarse') >= 0:
+                    coarse_params[variable_name] = variable
+                print("parameter: %s" %(variable_name))
+                if variable_name.find('fine') >= 0:
+                    refine_params[variable_name] = variable
 
-          def begin(self):
-            self._step = -1
-            self._start_time = time.time()
+        # define saver
+        print coarse_params
+        saver_coarse = tf.train.Saver(coarse_params)
+        saver_refine = tf.train.Saver(refine_params)
+        # fine tune
+        if FINE_TUNE:
+            coarse_ckpt = tf.train.get_checkpoint_state(COARSE_DIR)
+            if coarse_ckpt and coarse_ckpt.model_checkpoint_path:
+                print("Pretrained coarse Model Loading.")
+                saver_coarse.restore(sess, coarse_ckpt.model_checkpoint_path)
+                print("Pretrained coarse Model Restored.")
+            else:
+                print("No Pretrained coarse Model.")
 
-          def before_run(self, run_context):
-            self._step += 1
-            return tf.train.SessionRunArgs([loss, logits, images])  # Asks for loss value.
+            refine_ckpt = tf.train.get_checkpoint_state(REFINE_DIR)
+            if refine_ckpt and refine_ckpt.model_checkpoint_path:
+                print("Pretrained refine Model Loading.")
+                saver_refine.restore(sess, refine_ckpt.model_checkpoint_path)
+                print("Pretrained refine Model Restored.")
+            else:
+                print("No Pretrained refine Model.")
 
-          def after_run(self, run_context, run_values):
-            if self._step % LOG_FREQUENCY == 0:
-              current_time = time.time()
-              duration = current_time - self._start_time
-              self._start_time = current_time
+        # train
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+        for step in xrange(MAX_STEPS):
+            index = 0
+            for i in xrange(1000):
+                _, loss_value, logits_val, images_val = sess.run([train_op, loss, logits, images], feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
+                if index % 10 == 0:
+                    print("%s: %d[epoch]: %d[iteration]: train loss %f" % (datetime.now(), step, index, loss_value))
+                    assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
+                if index % 500 == 0:
+                    output_predict(logits_val, images_val, "data/predict_refine_%05d_%05d" % (step, i))
+                index += 1
 
-              loss_value = run_values.results[0]
-              depths = run_values.results[1]
-              images = run_values.results[2]
-              output_predict(depths, images, 'refine');
-              examples_per_sec = LOG_FREQUENCY * BATCH_SIZE / duration
-              sec_per_batch = float(duration / LOG_FREQUENCY)
-
-              format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
-                            'sec/batch)')
-              print (format_str % (datetime.now(), self._step, loss_value,
-                                   examples_per_sec, sec_per_batch))
-
-        # Train
-        with tf.train.MonitoredTrainingSession(
-                save_checkpoint_secs=30,
-                checkpoint_dir=COARSE_DIR,
-                hooks=[tf.train.StopAtStepHook(last_step=MAX_STEPS),
-                    tf.train.NanTensorHook(loss),
-                    _LoggerHook()],
-                config=tf.ConfigProto(
-                    log_device_placement=LOG_DEVICE_PLACEMENT)) as mon_sess:
-            #load the values from the coarse network
-            #FIXME: These files will be overriden by the MonitoredTrainingSession, which will cause problems and is the wrong way of doing this!!
-            coarse_ckpt = tf.train.get_checkpoint_state(REFINE_DIR)
-            saver_coarse.restore(mon_sess, coarse_ckpt.model_checkpoint_path)
-            while not mon_sess.should_stop():
-                mon_sess.run(train_op, feed_dict={keep_conv: 0.8, keep_hidden: 0.5})
+            if step % 5 == 0 or (step * 1) == MAX_STEPS:
+                refine_checkpoint_path = REFINE_DIR + '/model.ckpt'
+                saver_refine.save(sess, refine_checkpoint_path, global_step=step)
+        coord.request_stop()
+        coord.join(threads)
+        sess.close()
 
 def csv_inputs(csv_file_path, batch_size):
     filename_queue = tf.train.string_input_producer([csv_file_path], shuffle=True)
