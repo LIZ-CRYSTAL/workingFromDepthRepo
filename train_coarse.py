@@ -84,7 +84,7 @@ def train():
         # Train
         with tf.train.MonitoredTrainingSession(
                 save_checkpoint_secs=30,
-                checkpoint_dir=REFINE_DIR,
+                checkpoint_dir=COARSE_DIR,
                 hooks=[tf.train.StopAtStepHook(last_step=MAX_STEPS),
                     tf.train.NanTensorHook(loss),
                     _LoggerHook()],
