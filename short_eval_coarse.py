@@ -25,7 +25,7 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
   """
   config = tf.ConfigProto(device_count = {'GPU': 0})
   with tf.Session(config=config) as sess:
-    ckpt = tf.train.get_checkpoint_state('refine')
+    ckpt = tf.train.get_checkpoint_state('coarse')
     if ckpt and ckpt.model_checkpoint_path:
       # Restores from checkpoint
       
@@ -74,7 +74,7 @@ def evaluate():
     # inference model.
     keep_conv = tf.placeholder(tf.float32)
     keep_hidden = tf.placeholder(tf.float32)
-    logits = model.inference(images, trainable=False)
+    logits = model.inference_coarse(images, trainable=False)
     tf.summary.image('images2', logits*255.0, max_outputs=3)
     # Calculate predictions.
     top_k_op = model.loss(logits, depths, invalid_depths)
