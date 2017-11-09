@@ -25,7 +25,7 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
   """
   config = tf.ConfigProto(device_count = {'GPU': 0})
   with tf.Session(config=config) as sess:
-    ckpt = tf.train.get_checkpoint_state('refine')
+    ckpt = tf.train.get_checkpoint_state('all')
     if ckpt and ckpt.model_checkpoint_path:
       # Restores from checkpoint
       
