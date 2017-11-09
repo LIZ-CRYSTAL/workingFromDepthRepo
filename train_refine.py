@@ -19,6 +19,7 @@ LOG_FREQUENCY = 10
 TRAIN_FILE = "train.csv"
 COARSE_DIR = "coarse"
 REFINE_DIR = "refine"
+allDir = "all"
 checkpoint_dir = './here'
 
 IMAGE_HEIGHT = 228
@@ -55,6 +56,11 @@ def train():
         varsToLoad = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, variableName)
         # define saver
         saver_coarse = tf.train.Saver(varsToLoad)
+        saver_all = tf.train.Saver()
+        
+        variableName = "inference_refine"
+        varsToLoad = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, variableName)
+        saver_refine = tf.train.Saver(varsToLoad)
         # fine tune
         coarse_ckpt = tf.train.get_checkpoint_state(COARSE_DIR)
         if coarse_ckpt and coarse_ckpt.model_checkpoint_path:
@@ -67,7 +73,7 @@ def train():
         refine_ckpt = tf.train.get_checkpoint_state(REFINE_DIR)
         if refine_ckpt and refine_ckpt.model_checkpoint_path:
             print("Pretrained refine Model Loading.")
-            #saver_refine.restore(sess, refine_ckpt.model_checkpoint_path)
+            saver_refine.restore(sess, refine_ckpt.model_checkpoint_path)
             print("Pretrained refine Model Restored.")
         else:
             print("No Pretrained refine Model.")
@@ -89,6 +95,9 @@ def train():
             if step % 5 == 0 or (step * 1) == MAX_STEPS:
                 refine_checkpoint_path = REFINE_DIR + '/model.ckpt'
                 saver_refine.save(sess, refine_checkpoint_path, global_step=step)
+                refine_checkpoint_path = allDir+ '/model.ckpt'
+                saver_all.save(sess, refine_checkpoint_path, global_step=step)
+
         coord.request_stop()
         coord.join(threads)
         sess.close()
@@ -145,6 +154,8 @@ def main(argv=None):
         gfile.MakeDirs(COARSE_DIR)
     if not gfile.Exists(REFINE_DIR):
         gfile.MakeDirs(REFINE_DIR)
+    if not gfile.Exists(allDir):
+        gfile.MakeDirs(allDir)
     train()
 
 

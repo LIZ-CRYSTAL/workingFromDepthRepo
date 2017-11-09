@@ -74,7 +74,7 @@ def evaluate():
     # inference model.
     keep_conv = tf.placeholder(tf.float32)
     keep_hidden = tf.placeholder(tf.float32)
-    coarse = model.inference(images, trainable=False)
+    coarse = model.inference_coarse(images, trainable=False)
     logits = model.inference_refine(images, coarse, .5, keep_hidden)
     tf.summary.image('images2', logits*255.0, max_outputs=3)
     # Calculate predictions.
